@@ -5,21 +5,18 @@
 
 //=====[Defines]===============================================================
 
-#define NUMBER_OF_KEYS 4
+#define NUMBER_OF_KEYS 3
 
 //=====[Declaration and initialization of public global objects]===============
 
 DigitalIn enterButton(BUTTON1);
 DigitalIn gasDetector(D2);
-DigitalIn overTempDetector(D3);
-DigitalIn aButton(D4);
-DigitalIn bButton(D5);
-DigitalIn cButton(D6);
-DigitalIn dButton(D7);
-
-DigitalOut alarmLed(LED1);
-DigitalOut incorrectCodeLed(LED3);
-DigitalOut systemBlockedLed(LED2);
+DigitalIn aButton(D5);
+DigitalIn bButton(D6);
+DigitalIn cButton(D7);
+DigitalOut alarmLed(LED2);
+DigitalOut incorrectCodeLed(D4);
+DigitalOut systemBlockedLed(D8);
 
 UnbufferedSerial uartUsb(USBTX, USBRX, 115200);
 
@@ -30,8 +27,8 @@ bool incorrectCode = false;
 
 int numberOfIncorrectCodes = 0;
 int buttonBeingCompared    = 0;
-int codeSequence[NUMBER_OF_KEYS]   = { 1, 1, 0, 0 };
-int buttonsPressed[NUMBER_OF_KEYS] = { 0, 0, 0, 0 };
+int codeSequence[NUMBER_OF_KEYS]   = { 1, 1, 0};
+int buttonsPressed[NUMBER_OF_KEYS] = { 0, 0, 0};
 
 //=====[Declarations (prototypes) of public functions]=========================
 
@@ -63,23 +60,21 @@ int main()
 void inputsInit()
 {
     gasDetector.mode(PullDown);
-    overTempDetector.mode(PullDown);
     aButton.mode(PullDown);
     bButton.mode(PullDown);
     cButton.mode(PullDown);
-    dButton.mode(PullDown);
 }
 
 void outputsInit()
 {
     alarmLed = OFF;
-    incorrectCodeLed = OFF;
-    systemBlockedLed = OFF;
+    incorrectCodeLed = OFF; //Azul
+    systemBlockedLed = OFF; //Rojo
 }
 
 void alarmActivationUpdate()
 {
-    if ( gasDetector || overTempDetector ) {
+    if ( gasDetector) {
         alarmState = ON;
     }
     alarmLed = alarmState;
@@ -88,14 +83,13 @@ void alarmActivationUpdate()
 void alarmDeactivationUpdate()
 {
     if ( numberOfIncorrectCodes < 5 ) {
-        if ( aButton && bButton && cButton && dButton && !enterButton ) {
+        if ( aButton && bButton && cButton && enterButton ) {
             incorrectCodeLed = OFF;
         }
-        if ( enterButton && !incorrectCodeLed && alarmState ) {
+        if (!enterButton && !incorrectCodeLed && alarmState ) {
             buttonsPressed[0] = aButton;
             buttonsPressed[1] = bButton;
             buttonsPressed[2] = cButton;
-            buttonsPressed[3] = dButton;
             if ( areEqual() ) {
                 alarmState = OFF;
                 numberOfIncorrectCodes = 0;
@@ -124,30 +118,13 @@ void uartTask()
             break;
 
         case '2':
-            if ( gasDetector ) {
-                uartUsb.write( "Gas is being detected\r\n", 22);
-            } else {
-                uartUsb.write( "Gas is not being detected\r\n", 27);
-            }
-            break;
-
-        case '3':
-            if ( overTempDetector ) {
-                uartUsb.write( "Temperature is above the maximum level\r\n", 40);
-            } else {
-                uartUsb.write( "Temperature is below the maximum level\r\n", 40);
-            }
-            break;
-            
-        case '4':
             uartUsb.write( "Please enter the code sequence.\r\n", 33 );
             uartUsb.write( "First enter 'A', then 'B', then 'C', and ", 41 ); 
-            uartUsb.write( "finally 'D' button\r\n", 20 );
             uartUsb.write( "In each case type 1 for pressed or 0 for ", 41 );
             uartUsb.write( "not pressed\r\n", 13 );
             uartUsb.write( "For example, for 'A' = pressed, ", 32 );
             uartUsb.write( "'B' = pressed, 'C' = not pressed, ", 34);
-            uartUsb.write( "'D' = not pressed, enter '1', then '1', ", 40 );
+            uartUsb.write( "Enter '1', then '1', ", 21 );
             uartUsb.write( "then '0', and finally '0'\r\n\r\n", 29 );
 
             incorrectCode = false;
@@ -184,15 +161,14 @@ void uartTask()
             }                
             break;
 
-        case '5':
+        case '3':
             uartUsb.write( "Please enter new code sequence\r\n", 32 );
             uartUsb.write( "First enter 'A', then 'B', then 'C', and ", 41 );
-            uartUsb.write( "finally 'D' button\r\n", 20 );
             uartUsb.write( "In each case type 1 for pressed or 0 for not ", 45 );
             uartUsb.write( "pressed\r\n", 9 );
             uartUsb.write( "For example, for 'A' = pressed, 'B' = pressed,", 46 );
             uartUsb.write( " 'C' = not pressed,", 19 );
-            uartUsb.write( "'D' = not pressed, enter '1', then '1', ", 40 );
+            uartUsb.write( "Enter '1', then '1', ", 21 );
             uartUsb.write( "then '0', and finally '0'\r\n\r\n", 29 );
 
             for ( buttonBeingCompared = 0; 
@@ -211,7 +187,23 @@ void uartTask()
 
             uartUsb.write( "\r\nNew code generated\r\n\r\n", 24 );
             break;
+/*
+        case '4':
+            if ( gasDetector ) {
+                uartUsb.write( "Gas is being detected\r\n", 22);
+            } else {
+                uartUsb.write( "Gas is not being detected\r\n", 27);
+            }
+            break;
 
+        case '5':
+            if ( overTempDetector ) {
+                uartUsb.write( "Temperature is above the maximum level\r\n", 40);
+            } else {
+                uartUsb.write( "Temperature is below the maximum level\r\n", 40);
+            }
+            break;
+*/
         default:
             availableCommands();
             break;
@@ -224,10 +216,10 @@ void availableCommands()
 {
     uartUsb.write( "Available commands:\r\n", 21 );
     uartUsb.write( "Press '1' to get the alarm state\r\n", 34 );
-    uartUsb.write( "Press '2' to get the gas detector state\r\n", 41 );
-    uartUsb.write( "Press '3' to get the over temperature detector state\r\n", 54 );
-    uartUsb.write( "Press '4' to enter the code sequence\r\n", 38 );
-    uartUsb.write( "Press '5' to enter a new code\r\n\r\n", 33 );
+    // uartUsb.write( "Press '2' to get the gas detector state\r\n", 41 );
+    // uartUsb.write( "Press '3' to get the over temperature detector state\r\n", 54 );
+    uartUsb.write( "Press '2' to enter the code sequence\r\n", 38 );
+    uartUsb.write( "Press '3' to enter a new code\r\n\r\n", 33 );
 }
 
 bool areEqual()
